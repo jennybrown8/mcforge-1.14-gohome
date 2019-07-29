@@ -16,7 +16,7 @@ modId="gohome" #mandatory
 # The version number of the mod - there's a few well known ${} variables useable here or just hardcode it
 version="${file.jarVersion}" #mandatory
  # A display name for the mod
-displayName="GoHome by PathmakerJen" #mandatory
+displayName="GoHome by JennyBrown8" #mandatory
 # A URL to query for updates for this mod. See the JSON update specification <here>
 updateJSONURL="http://myurl.me/" #optional
 # A URL for the "homepage" for this mod, displayed in the mod UI
@@ -24,9 +24,9 @@ displayURL="https://github.com/jennybrown8/minecraft-mods" #optional
 # A file name (in the root of the mod JAR) containing a logo for display
 logoFile="gohomelogo.png" #optional
 # A text field displayed in the mod UI
-credits="Making Minecraft with littles simpler, by PathmakerJen" #optional
+credits="Making Minecraft with littles simpler, by JennyBrown8" #optional
 # A text field displayed in the mod UI
-authors="PathmakerJen" #optional
+authors="JennyBrown8" #optional
 # The description text for the mod (multi line!) (#mandatory)
 # For some weird reason the first 3 lines are always cut off, so use dots to skip them.
 description='''.

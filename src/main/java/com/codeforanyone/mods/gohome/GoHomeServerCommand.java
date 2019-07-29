@@ -33,6 +33,9 @@ import net.minecraft.world.chunk.TicketType;
 import net.minecraft.world.dimension.DimensionType;
 
 public class GoHomeServerCommand {
+	
+	public static final int OPERATOR_PERMISSION = 2;
+	public static final boolean ALLOW_LOGGING_TRUE = true;
 
 	public GoHomeServerCommand(CommandDispatcher<CommandSource> dispatcher) {
 		GoHomeServerCommand.register(dispatcher);
@@ -51,24 +54,51 @@ public class GoHomeServerCommand {
 				})));
 	}
 
-	public static int executeGoCommand(CommandSource source, CommandContext<CommandSource> ctx, GoSubcommand sub) {
+	public static int executeGoCommand(CommandSource commandSource, CommandContext<CommandSource> ctx, GoSubcommand sub) {
 		System.out.println("Got subcommand " + sub.getSubcommandOrLocation());
 
+		/*
 		GoHomeWorldSavedData data = GoHomeWorldSavedData.INSTANCE;
 		System.out.println("JENNY Before setting valtest: " + data.getValtest());
 		data.setValtest("testing");
 		System.out.println("JENNY After setting valtest: " + data.getValtest());
+		*/
 
 		if ("home".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
-			GoHomeServerCommand.teleport(source, source.getEntity(), (ServerWorld) source.getWorld(),
-					source.getWorld().getWorldInfo().getSpawnX() + 0.5, source.getWorld().getWorldInfo().getSpawnY(),
-					source.getWorld().getWorldInfo().getSpawnZ() + 0.5,
-					EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class), source.getEntity().getYaw(0),
-					source.getEntity().getPitch(0), new Facing(source.getEntity().getLookVec()));
+			// TODO: Safety check first.
+			GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(), (ServerWorld) commandSource.getWorld(),
+					commandSource.getWorld().getWorldInfo().getSpawnX() + 0.5, commandSource.getWorld().getWorldInfo().getSpawnY(),
+					commandSource.getWorld().getWorldInfo().getSpawnZ() + 0.5,
+					EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class), commandSource.getEntity().getYaw(0),
+					commandSource.getEntity().getPitch(0), new Facing(commandSource.getEntity().getLookVec()));
+			commandSource.sendFeedback(new StringTextComponent("Home sweet home!"), ALLOW_LOGGING_TRUE);
+			return 1;
+		}
+		if ("list".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
+			commandSource.sendFeedback(new StringTextComponent("home and some others listed"), ALLOW_LOGGING_TRUE);
+			return 1;
+		}
+		if ("add-global".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
+			// You must be a server operator to use this one.
+			if (! commandSource.hasPermissionLevel(OPERATOR_PERMISSION)) {
+					commandSource.sendFeedback(new StringTextComponent("Error: You must be a server operator to add global named locations."), ALLOW_LOGGING_TRUE);
+					return 0;
+			}
+			commandSource.sendFeedback(new StringTextComponent("You would have been allowed to add a global location."), ALLOW_LOGGING_TRUE);
+			return 1;
+		}
+		if ("rm-global".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
+			// You must be a server operator to use this one.
+			if (! commandSource.hasPermissionLevel(OPERATOR_PERMISSION)) {
+					commandSource.sendFeedback(new StringTextComponent("Error: You must be a server operator to remove global named locations."), ALLOW_LOGGING_TRUE);
+					return 0;
+			}
+			commandSource.sendFeedback(new StringTextComponent("You would have been allowed to remove a global location."), ALLOW_LOGGING_TRUE);
+			return 1;
 		}
 		if ("add".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
 			try {
-				CompoundNBT nbt = source.asPlayer().getEntityData();
+				CompoundNBT nbt = commandSource.asPlayer().getEntityData();
 				NamedLocation nl1 = new NamedLocation("testing", 55, 35, 45, DimensionType.field_223227_a_);
 				Set<NamedLocation> set1 = new HashSet<NamedLocation>();
 				set1.add(nl1);
@@ -102,10 +132,12 @@ public class GoHomeServerCommand {
 			} catch (Throwable t) {
 				t.printStackTrace();
 			}
+			commandSource.sendFeedback(new StringTextComponent("You would have been allowed to add a personal location."), ALLOW_LOGGING_TRUE);
+			return 1;
 		}
 		if ("rm".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
 			try {
-				CompoundNBT nbt = source.asPlayer().getEntityData();
+				CompoundNBT nbt = commandSource.asPlayer().getEntityData();
 
 				Map<String, String> written = new HashMap<String, String>();
 				written.put("names", nbt.getString("names"));
@@ -125,21 +157,11 @@ public class GoHomeServerCommand {
 			} catch (Throwable t) {
 				t.printStackTrace();
 			}
+			commandSource.sendFeedback(new StringTextComponent("You would have been allowed to remove a personal location."), ALLOW_LOGGING_TRUE);
+			return 1;
 		}
 
-		// System.out.println("JENNY Before setting playerTest: " +
-		// playerData.getString("playerTest"));
-		// playerData.putString("playerTest", "Jenny");
-		// System.out.println("JENNY After setting playerTest: " +
-		// playerData.getString("playerTest"));
-		// } catch (CommandSyntaxException e) {
-		// source.sendFeedback(new StringTextComponent("go command exception getting
-		// player data"), true);
-		// e.printStackTrace();
-		// }
-
-		source.sendFeedback(new StringTextComponent("go command success"), true);
-		return 1;
+		return 0;
 	}
 
 	// I'd rather not copy-paste the contents of TeleportCommand, but its static

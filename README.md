@@ -1,5 +1,10 @@
 # GoHome Minecraft Forge Mod for MC 1.14+
 
+This is built against Minecraft 1.14 with matching Forge.  My previous version was for 1.8.  There's no
+version compatibility in between, for this mod.  I wanted it caught up to the latest so I could
+use it again.  Work in progress right now.  I'll try to update this with a link to the jar once it's ready for 
+distribution.
+
 # Go-Home Minecraft Mod Features
 
 The `/go home` command teleports you to Minecraft overworld's world-spawn as long as it's safe to land.  

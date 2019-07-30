@@ -5,12 +5,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 
 import javax.annotation.Nullable;
 
 import com.codeforanyone.mods.gohome.NamedLocation.NamedLocations;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
@@ -19,9 +22,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.DataSerializers;
-import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.network.play.server.SPlayerPositionLookPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -33,9 +33,22 @@ import net.minecraft.world.chunk.TicketType;
 import net.minecraft.world.dimension.DimensionType;
 
 public class GoHomeServerCommand {
-	
+
 	public static final int OPERATOR_PERMISSION = 2;
 	public static final boolean ALLOW_LOGGING_TRUE = true;
+
+	static class RunResult {
+		static final boolean SUCCESS = true;
+		static final boolean FAILURE = false;
+
+		String message;
+		boolean success;
+
+		RunResult(boolean success, String message) {
+			this.success = success;
+			this.message = message;
+		}
+	}
 
 	public GoHomeServerCommand(CommandDispatcher<CommandSource> dispatcher) {
 		GoHomeServerCommand.register(dispatcher);
@@ -45,58 +58,119 @@ public class GoHomeServerCommand {
 	// The different levels of then/executes handle missing arguments with sensible
 	// defaults. Note that it's .then(argument).then(argument.execute) layering
 	// here.
-
 	public static void register(CommandDispatcher<CommandSource> dispatcher) {
-		dispatcher.register(Commands.literal("go")
-				.then(Commands.argument("subcommand", GoSubcommandArgument.subcommands()).executes(ctx -> {
-					return executeGoCommand(ctx.getSource(), ctx,
-							GoSubcommandArgument.getSubcommand(ctx, "subcommand"));
-				})));
+		dispatcher.register(Commands.literal("go").then(Commands.literal("list").executes(ctx -> {
+			return executeGoCommand(ctx.getSource(), ctx, "list", null);
+		})).then(Commands.literal("add-global")
+				.then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
+					return executeGoCommand(ctx.getSource(), ctx, "add-global",
+							ctx.getArgument("placename", String.class));
+				}))).then(Commands.literal("rm-global")
+						.then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
+							return executeGoCommand(ctx.getSource(), ctx, "rm-global",
+									ctx.getArgument("placename", String.class));
+						})))
+				.then(Commands.literal("rm")
+						.then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
+							return executeGoCommand(ctx.getSource(), ctx, "rm",
+									ctx.getArgument("placename", String.class));
+						})))
+				.then(Commands.literal("add")
+						.then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
+							return executeGoCommand(ctx.getSource(), ctx, "add",
+									ctx.getArgument("placename", String.class));
+						}))));
 	}
 
-	public static int executeGoCommand(CommandSource commandSource, CommandContext<CommandSource> ctx, GoSubcommand sub) {
-		System.out.println("Got subcommand " + sub.getSubcommandOrLocation());
+	public static RunResult addGlobal(CommandSource commandSource, ServerPlayerEntity player, String placename) {
+		if (!commandSource.hasPermissionLevel(OPERATOR_PERMISSION)) {
+			return new RunResult(RunResult.FAILURE,
+					"Error: You must be a server operator to add global named locations.");
+		}
+		if (placename == null) {
+			return new RunResult(RunResult.FAILURE, "Error: A location name must be provided for add-global.");
+		}
 
-		/*
-		GoHomeWorldSavedData data = GoHomeWorldSavedData.INSTANCE;
-		System.out.println("JENNY Before setting valtest: " + data.getValtest());
-		data.setValtest("testing");
-		System.out.println("JENNY After setting valtest: " + data.getValtest());
-		*/
+		boolean willOverwrite = GoHomeWorldSavedData.INSTANCE.hasNamedLocation(placename);
+		GoHomeWorldSavedData.INSTANCE.addGlobalLocation(new NamedLocation(placename, player));
+		if (willOverwrite) {
+			return new RunResult(RunResult.SUCCESS, "Replaced global location " + placename);
+		} else {
+			return new RunResult(RunResult.SUCCESS, "Added global location " + placename);
+		}
+	}
 
-		if ("home".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
+	public static RunResult removeGlobal(CommandSource commandSource, ServerPlayerEntity player, String placename) {
+		if (!commandSource.hasPermissionLevel(OPERATOR_PERMISSION)) {
+			return new RunResult(RunResult.FAILURE,
+					"Error: You must be a server operator to add global named locations.");
+		}
+		if (placename == null) {
+			return new RunResult(RunResult.FAILURE, "Error: A location name must be provided for add-global.");
+		}
+
+		if (GoHomeWorldSavedData.INSTANCE.hasNamedLocation(placename)) {
+			GoHomeWorldSavedData.INSTANCE.removeGlobalLocation(placename);
+			return new RunResult(RunResult.SUCCESS, "Removed " + placename + " from the global locations.");
+		} else {
+			return new RunResult(RunResult.FAILURE, "No global lcoation " + placename + " exists.  Did you typo?");
+		}
+	}
+
+	public static RunResult listGlobal() {
+		if (GoHomeWorldSavedData.INSTANCE.listGlobalLocations().isEmpty()) {
+			return new RunResult(RunResult.SUCCESS,
+					"Global locations: None.  Try adding some with '/go add-global placename'");
+		} else {
+			return new RunResult(RunResult.SUCCESS,
+					"Global locations: " + String.join(",", GoHomeWorldSavedData.INSTANCE.listGlobalLocations()));
+		}
+	}
+
+	public static int executeGoCommand(CommandSource commandSource, CommandContext<CommandSource> ctx, String sub,
+			String placename) {
+
+		ServerPlayerEntity player = null;
+		try {
+			player = commandSource.asPlayer();
+		} catch (CommandSyntaxException e) {
+			commandSource.sendFeedback(
+					new StringTextComponent(
+							"Error with reading command source as player in go command: " + e.toString()),
+					ALLOW_LOGGING_TRUE);
+			e.printStackTrace();
+			return 0;
+		}
+
+		if ("home".equalsIgnoreCase(sub)) {
 			// TODO: Safety check first.
-			GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(), (ServerWorld) commandSource.getWorld(),
-					commandSource.getWorld().getWorldInfo().getSpawnX() + 0.5, commandSource.getWorld().getWorldInfo().getSpawnY(),
+			GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(),
+					(ServerWorld) commandSource.getWorld(), commandSource.getWorld().getWorldInfo().getSpawnX() + 0.5,
+					commandSource.getWorld().getWorldInfo().getSpawnY(),
 					commandSource.getWorld().getWorldInfo().getSpawnZ() + 0.5,
 					EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class), commandSource.getEntity().getYaw(0),
 					commandSource.getEntity().getPitch(0), new Facing(commandSource.getEntity().getLookVec()));
 			commandSource.sendFeedback(new StringTextComponent("Home sweet home!"), ALLOW_LOGGING_TRUE);
 			return 1;
 		}
-		if ("list".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
-			commandSource.sendFeedback(new StringTextComponent("home and some others listed"), ALLOW_LOGGING_TRUE);
-			return 1;
+		if ("list".equalsIgnoreCase(sub)) {
+			RunResult exitcodeGlobal = listGlobal();
+			String globalNames = exitcodeGlobal.message;
+			// TODO: Include player-local names too.
+			commandSource.sendFeedback(new StringTextComponent(globalNames), ALLOW_LOGGING_TRUE);
+			return exitcodeGlobal.success ? 1 : 0;
 		}
-		if ("add-global".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
-			// You must be a server operator to use this one.
-			if (! commandSource.hasPermissionLevel(OPERATOR_PERMISSION)) {
-					commandSource.sendFeedback(new StringTextComponent("Error: You must be a server operator to add global named locations."), ALLOW_LOGGING_TRUE);
-					return 0;
-			}
-			commandSource.sendFeedback(new StringTextComponent("You would have been allowed to add a global location."), ALLOW_LOGGING_TRUE);
-			return 1;
+		if ("add-global".equalsIgnoreCase(sub)) {
+			RunResult exitcode = addGlobal(commandSource, player, placename);
+			commandSource.sendFeedback(new StringTextComponent(exitcode.message), ALLOW_LOGGING_TRUE);
+			return exitcode.success ? 1 : 0;
 		}
-		if ("rm-global".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
-			// You must be a server operator to use this one.
-			if (! commandSource.hasPermissionLevel(OPERATOR_PERMISSION)) {
-					commandSource.sendFeedback(new StringTextComponent("Error: You must be a server operator to remove global named locations."), ALLOW_LOGGING_TRUE);
-					return 0;
-			}
-			commandSource.sendFeedback(new StringTextComponent("You would have been allowed to remove a global location."), ALLOW_LOGGING_TRUE);
-			return 1;
+		if ("rm-global".equalsIgnoreCase(sub)) {
+			RunResult exitcode = removeGlobal(commandSource, player, placename);
+			commandSource.sendFeedback(new StringTextComponent(exitcode.message), ALLOW_LOGGING_TRUE);
+			return exitcode.success ? 1 : 0;
 		}
-		if ("add".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
+		if ("add".equalsIgnoreCase(sub)) {
 			try {
 				CompoundNBT nbt = commandSource.asPlayer().getEntityData();
 				NamedLocation nl1 = new NamedLocation("testing", 55, 35, 45, DimensionType.field_223227_a_);
@@ -132,10 +206,12 @@ public class GoHomeServerCommand {
 			} catch (Throwable t) {
 				t.printStackTrace();
 			}
-			commandSource.sendFeedback(new StringTextComponent("You would have been allowed to add a personal location."), ALLOW_LOGGING_TRUE);
+			commandSource.sendFeedback(
+					new StringTextComponent("You would have been allowed to add a personal location."),
+					ALLOW_LOGGING_TRUE);
 			return 1;
 		}
-		if ("rm".equalsIgnoreCase(sub.getSubcommandOrLocation())) {
+		if ("rm".equalsIgnoreCase(sub)) {
 			try {
 				CompoundNBT nbt = commandSource.asPlayer().getEntityData();
 
@@ -157,7 +233,9 @@ public class GoHomeServerCommand {
 			} catch (Throwable t) {
 				t.printStackTrace();
 			}
-			commandSource.sendFeedback(new StringTextComponent("You would have been allowed to remove a personal location."), ALLOW_LOGGING_TRUE);
+			commandSource.sendFeedback(
+					new StringTextComponent("You would have been allowed to remove a personal location."),
+					ALLOW_LOGGING_TRUE);
 			return 1;
 		}
 

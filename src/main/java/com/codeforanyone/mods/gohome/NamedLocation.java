@@ -2,12 +2,14 @@ package com.codeforanyone.mods.gohome;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.world.dimension.DimensionType;
 
 public class NamedLocation {
@@ -24,6 +26,15 @@ public class NamedLocation {
 		this.ypos = ypos;
 		this.zpos = zpos;
 		this.dimensionType = dimensionType;
+	}
+	
+	/**
+	 * Helper for reading the player's location in the way we need.
+	 * @param player
+	 * @param locationName
+	 */
+	public NamedLocation(String locationName, ServerPlayerEntity player) {
+		this(locationName, player.posX, player.posY, player.posZ, player.dimension);
 	}
 
 	public String getName() {
@@ -115,7 +126,8 @@ public class NamedLocation {
 	 * persistence via the player DataManager.
 	 */
 	public static class NamedLocations {
-		public static Map<String, String> serialize(Set<NamedLocation> set) {
+		
+		public static Map<String, String> serialize(Collection<NamedLocation> set) {
 			List<String> names = new ArrayList<String>();
 			List<String> xs = new ArrayList<String>();
 			List<String> ys = new ArrayList<String>();

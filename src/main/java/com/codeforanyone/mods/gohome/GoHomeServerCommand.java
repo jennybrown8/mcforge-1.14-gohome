@@ -59,27 +59,24 @@ public class GoHomeServerCommand {
 	// defaults. Note that it's .then(argument).then(argument.execute) layering
 	// here.
 	public static void register(CommandDispatcher<CommandSource> dispatcher) {
-		dispatcher.register(Commands.literal("go").then(Commands.literal("list").executes(ctx -> {
-			return executeGoCommand(ctx.getSource(), ctx, "list", null);
-		})).then(Commands.literal("add-global")
-				.then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
-					return executeGoCommand(ctx.getSource(), ctx, "add-global",
-							ctx.getArgument("placename", String.class));
-				}))).then(Commands.literal("rm-global")
-						.then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
-							return executeGoCommand(ctx.getSource(), ctx, "rm-global",
-									ctx.getArgument("placename", String.class));
-						})))
-				.then(Commands.literal("rm")
-						.then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
-							return executeGoCommand(ctx.getSource(), ctx, "rm",
-									ctx.getArgument("placename", String.class));
-						})))
-				.then(Commands.literal("add")
-						.then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
-							return executeGoCommand(ctx.getSource(), ctx, "add",
-									ctx.getArgument("placename", String.class));
-						}))));
+		// @formatter:off
+		dispatcher.register(Commands.literal("go")
+		.then(Commands.literal("list").executes(ctx -> {
+				return executeGoCommand(ctx.getSource(), ctx, "list", null);
+		})).then(Commands.literal("add-global").then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
+				return executeGoCommand(ctx.getSource(), ctx, "add-global",
+					ctx.getArgument("placename", String.class));
+		}))).then(Commands.literal("rm-global").then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
+				return executeGoCommand(ctx.getSource(), ctx, "rm-global",
+					ctx.getArgument("placename", String.class));
+		}))).then(Commands.literal("rm").then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
+				return executeGoCommand(ctx.getSource(), ctx, "rm",
+					ctx.getArgument("placename", String.class));
+		}))).then(Commands.literal("add").then(Commands.argument("placename", StringArgumentType.word()).executes(ctx -> {
+				return executeGoCommand(ctx.getSource(), ctx, "add",
+					ctx.getArgument("placename", String.class));
+		}))));
+		// @formatter:on
 	}
 
 	public static RunResult addGlobal(CommandSource commandSource, ServerPlayerEntity player, String placename) {

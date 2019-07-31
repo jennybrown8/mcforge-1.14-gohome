@@ -4,12 +4,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.world.dimension.DimensionType;
 
 public class NamedLocation {
@@ -20,7 +19,6 @@ public class NamedLocation {
 	DimensionType dimensionType;
 
 	public NamedLocation(String name, double xpos, double ypos, double zpos, DimensionType dimensionType) {
-		super();
 		this.name = name;
 		this.xpos = xpos;
 		this.ypos = ypos;
@@ -34,7 +32,11 @@ public class NamedLocation {
 	 * @param locationName
 	 */
 	public NamedLocation(String locationName, ServerPlayerEntity player) {
-		this(locationName, player.posX, player.posY, player.posZ, player.dimension);
+		this.name = locationName;
+		this.xpos = player.posX;
+		this.ypos = player.posY;
+		this.zpos = player.posZ;
+		this.dimensionType = player.dimension;
 	}
 
 	public String getName() {
@@ -75,6 +77,12 @@ public class NamedLocation {
 
 	public void setDimensionType(DimensionType dimensionType) {
 		this.dimensionType = dimensionType;
+	}
+	
+	@Override
+	public String toString() {
+		return "NamedLocation [name=" + name + ", xpos=" + xpos + ", ypos=" + ypos + ", zpos=" + zpos
+				+ ", dimensionType=" + dimensionType + "]";
 	}
 
 	@Override
@@ -127,27 +135,37 @@ public class NamedLocation {
 	 */
 	public static class NamedLocations {
 		
-		public static Map<String, String> serialize(Collection<NamedLocation> set) {
+		public static final String SERIALIZATION_DELIMITER = "|";
+		private static final String KEY_DIMS = "dims";
+		private static final String KEY_POS_Z = "posZ";
+		private static final String KEY_POS_Y = "posY";
+		private static final String KEY_POS_X = "posX";
+		private static final String KEY_NAMES = "names";
+		public static final List<String> NBT_KEYS = Arrays.asList(KEY_NAMES, KEY_POS_X, KEY_POS_Y, KEY_POS_Z, KEY_DIMS);
+
+		static Map<String, String> serialize(Map<String, NamedLocation> map) {
 			List<String> names = new ArrayList<String>();
 			List<String> xs = new ArrayList<String>();
 			List<String> ys = new ArrayList<String>();
 			List<String> zs = new ArrayList<String>();
 			List<String> dims = new ArrayList<String>();
 
-			for (NamedLocation key : set) {
-				names.add(key.name);
-				xs.add("" + key.getXpos());
-				ys.add("" + key.getYpos());
-				zs.add("" + key.getZpos());
-				dims.add("" + key.dimensionType.getId());
+			for (String key : map.keySet()) {
+				names.add(map.get(key).getName());
+				xs.add("" + map.get(key).getXpos());
+				ys.add("" + map.get(key).getYpos());
+				zs.add("" + map.get(key).getZpos());
+				dims.add("" + map.get(key).getDimensionType().getId());
 			}
 
 			Map<String, String> stringRepresentation = new HashMap<String, String>();
-			stringRepresentation.put("names", String.join("|", names));
-			stringRepresentation.put("posX", String.join(",", xs));
-			stringRepresentation.put("posY", String.join(",", ys));
-			stringRepresentation.put("posZ", String.join(",", zs));
-			stringRepresentation.put("dims", String.join(",", dims));
+			if (! map.isEmpty()) {
+				stringRepresentation.put(KEY_NAMES, String.join(SERIALIZATION_DELIMITER, names));
+				stringRepresentation.put(KEY_POS_X, String.join(SERIALIZATION_DELIMITER, xs));
+				stringRepresentation.put(KEY_POS_Y, String.join(SERIALIZATION_DELIMITER, ys));
+				stringRepresentation.put(KEY_POS_Z, String.join(SERIALIZATION_DELIMITER, zs));
+				stringRepresentation.put(KEY_DIMS, String.join(SERIALIZATION_DELIMITER, dims));
+			}
 			return stringRepresentation;
 		}
 
@@ -163,32 +181,68 @@ public class NamedLocation {
 				return Arrays.asList(text.split(delimiter));
 			}
 			List<String> l = new ArrayList<String>();
-			if (text != null) {
-				l.add(text);
+			if (text != null && !"".equals(text.trim())) {
+				l.add(text.trim());
 			}
 			return l;
 		}
+		
+		static String mapToString(Map<String, String> map) {
+			StringBuffer sb = new StringBuffer("\n");
+			for (String k : map.keySet()) {
+				sb.append(k + "\t" + map.get(k) + "\n");
+			}
+			return sb.toString();
+		}
 
-		public static Set<NamedLocation> deserialize(Map<String, String> map) {
-			List<String> names = splitToList(map.get("names"), "|");
-			List<String> xs = splitToList(map.get("posX"), ",");
-			List<String> ys = splitToList(map.get("posY"), ",");
-			List<String> zs = splitToList(map.get("posZ"), ",");
-			List<String> dims = splitToList(map.get("dims"), ",");
+		static Map<String, NamedLocation> deserialize(Map<String, String> map) {
+			List<String> names = splitToList(map.get(KEY_NAMES), SERIALIZATION_DELIMITER);
+			List<String> posX = splitToList(map.get(KEY_POS_X), SERIALIZATION_DELIMITER);
+			List<String> posY = splitToList(map.get(KEY_POS_Y), SERIALIZATION_DELIMITER);
+			List<String> posZ = splitToList(map.get(KEY_POS_Z), SERIALIZATION_DELIMITER);
+			List<String> dims = splitToList(map.get(KEY_DIMS), SERIALIZATION_DELIMITER);
 
 			// Names list is fine as strings. The others need conversion.
 			// But we can do it on the fly while constructing.
-			Set<NamedLocation> set = new HashSet<NamedLocation>();
-			for (int i = 0; i < names.size(); i++) {
-				set.add(new NamedLocation(names.get(i), 
-						Double.parseDouble(xs.get(i)), 
-						Double.parseDouble(ys.get(i)),
-						Double.parseDouble(zs.get(i)), 
+			Map<String, NamedLocation> namedLocations = new HashMap<String, NamedLocation>();
+			for (int i = 0; i < posX.size(); i++) {
+				namedLocations.put(names.get(i), 
+						new NamedLocation(names.get(i), 
+						Double.parseDouble(posX.get(i)), 
+						Double.parseDouble(posY.get(i)),
+						Double.parseDouble(posZ.get(i)), 
 						DimensionType.getById(Integer.parseInt(dims.get(i)))));
 			}
-			return set;
+			return namedLocations;
 		}
-
+		
+		/**
+		 * This reads the values from the compound nbt, throws them into a map temporarily
+		 * for transit, and then gets them deserialized into the Map<String, NamedLocation> that we need.
+		 */
+		public static Map<String, NamedLocation> read(CompoundNBT nbt) {
+			Map<String, String> locs = new HashMap<String, String>();
+			for (String key : NBT_KEYS) {
+				locs.put(key, nbt.getString(key));
+			}
+			return NamedLocations.deserialize(locs);
+		}
+		
+		/**
+		 * This persists the values from the in-memory java object into the compoundnbt.
+		 * It takes the Map<String, NamedLocation> we have, serializes them into strings, and
+		 * throws them into a Map temporarily for transit back here, where we can write 
+		 * them out to the nbt which gets saved to disk.
+		 */
+		public static CompoundNBT write(CompoundNBT compound, Map<String, NamedLocation> namedLocations) {
+			Map<String, String> locs = NamedLocations.serialize(namedLocations);
+			for (String key : NBT_KEYS) {
+				compound.putString(key, locs.getOrDefault(key, ""));
+			}
+			return compound;
+		}
+		
+		
 	}
 
 }

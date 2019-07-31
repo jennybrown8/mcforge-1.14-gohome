@@ -15,8 +15,6 @@ import net.minecraft.world.storage.WorldSavedData;
 public class GoHomeWorldSavedData extends WorldSavedData {
 	public static final GoHomeWorldSavedData INSTANCE = new GoHomeWorldSavedData();
 	
-	private static final List<String> KEYS = Arrays.asList("names", "posX", "posY", "posZ", "dims");
-
 	Map<String, NamedLocation> globalNamedLocations;
 
 	public GoHomeWorldSavedData() {
@@ -27,6 +25,10 @@ public class GoHomeWorldSavedData extends WorldSavedData {
 	public GoHomeWorldSavedData(String s) {
 		super(s);
 		globalNamedLocations = new HashMap<String, NamedLocation>();
+	}
+	
+	public void resetAllGlobal() {
+		globalNamedLocations.clear();
 	}
 	
 	/**
@@ -73,14 +75,7 @@ public class GoHomeWorldSavedData extends WorldSavedData {
 	 */
 	@Override
 	public void read(CompoundNBT nbt) {
-		Map<String, String> locs = new HashMap<String, String>();
-		for (String key : KEYS) {
-			locs.put(key, nbt.getString(key));
-		}
-		globalNamedLocations = new HashMap<String, NamedLocation>();
-		for (NamedLocation nl : NamedLocations.deserialize(locs)) {
-			addGlobalLocation(nl);
-		}
+		globalNamedLocations = NamedLocations.read(nbt);
 	}
 
 	/**
@@ -91,11 +86,7 @@ public class GoHomeWorldSavedData extends WorldSavedData {
 	 */
 	@Override
 	public CompoundNBT write(CompoundNBT compound) {
-		Map<String, String> locs = NamedLocations.serialize(globalNamedLocations.values());
-		for (String key : KEYS) {
-			compound.putString(key, locs.get(key));
-		}
-		return compound;
+		return NamedLocations.write(compound, globalNamedLocations);
 	}
 
 	

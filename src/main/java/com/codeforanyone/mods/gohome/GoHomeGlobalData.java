@@ -23,26 +23,34 @@ public class GoHomeGlobalData {
 
 	private static final String GO_HOME_DATA_NBT_FILENAME = "GoHomeData.nbt";
 
+	// Singleton, all access is done through this instance while the server is live.
 	public static GoHomeGlobalData INSTANCE = new GoHomeGlobalData();
 
+	// Storage kept in the singleton instance
 	Map<String, NamedLocation> globalNamedLocations = null;
 
-	public GoHomeGlobalData() {
+	private GoHomeGlobalData() {
 		globalNamedLocations = new HashMap<String, NamedLocation>();
 	}
 	
+	/**
+	 * Reads from the save file and deserializes the global named locations.
+	 */
 	public void load() {
 		File fileIn = new File(GO_HOME_DATA_NBT_FILENAME);
 		CompoundNBT compoundnbt = new CompoundNBT();
 
 		try (FileInputStream fileinputstream = new FileInputStream(fileIn)) {
 			compoundnbt = CompressedStreamTools.readCompressed(fileinputstream);
-			this.read(compoundnbt.getCompound("data"));
+			this.read(compoundnbt.getCompound("data")); // note the nested 'data' element we pass to the next layer
 		} catch (IOException ioexception) {
 			LOGGER.error("GoHome could not load data " + ioexception + " for file " + fileIn.getAbsolutePath(), ioexception);
 		}
 	}
 
+	/**
+	 * Serializes the global named locations and writes to the file on disk.
+	 */
 	public void save() {
 		File fileIn = new File(GO_HOME_DATA_NBT_FILENAME);
 		CompoundNBT compoundnbt = new CompoundNBT();
@@ -56,10 +64,16 @@ public class GoHomeGlobalData {
 		}
 	}
 
+	/**
+	 * Gets the instance that you should interact with.
+	 */
 	public static GoHomeGlobalData getInstance() {
 		return INSTANCE;
 	}
 
+	/**
+	 * Drops all global named locations, starting fresh.
+	 */
 	public void resetAllGlobal() {
 		globalNamedLocations.clear();
 	}
@@ -73,6 +87,11 @@ public class GoHomeGlobalData {
 		return globalNamedLocations.get(name);
 	}
 
+	/**
+	 * Checks to see if the location exists by this name
+	 * @param name
+	 * @return
+	 */
 	public boolean hasNamedLocation(String name) {
 		return globalNamedLocations.containsKey(name);
 	}
@@ -106,7 +125,7 @@ public class GoHomeGlobalData {
 	 * strings, and throws them into a Map temporarily for transit back here, where
 	 * we can write them out to the nbt which gets saved to disk.
 	 */
-	public CompoundNBT write(CompoundNBT compound) {
+	private CompoundNBT write(CompoundNBT compound) {
 		return NamedLocations.write(compound, globalNamedLocations);
 	}
 
@@ -115,7 +134,7 @@ public class GoHomeGlobalData {
 	 * temporarily for transit, and then gets them deserialized into the Map<String,
 	 * NamedLocation> that we need.
 	 */
-	public void read(CompoundNBT nbt) {
+	private void read(CompoundNBT nbt) {
 		globalNamedLocations = NamedLocations.read(nbt);
 	}
 

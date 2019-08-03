@@ -18,6 +18,16 @@ public class NamedLocation {
 	double zpos;
 	DimensionType dimensionType;
 
+	/**
+	 * Pretty basic, just represents a specific block in MC in a specific dimension, but
+	 * with a saved name.
+	 * @param name
+	 * @param xpos
+	 * @param ypos
+	 * @param zpos
+	 * @param dimensionType
+	 */
+	
 	public NamedLocation(String name, double xpos, double ypos, double zpos, DimensionType dimensionType) {
 		this.name = name;
 		this.xpos = xpos;
@@ -130,7 +140,7 @@ public class NamedLocation {
 	}
 
 	/**
-	 * This is a helper class to serializer/deserialize to a String format for easy
+	 * This is a helper class to serialize/deserialize to a String format for easy
 	 * persistence via the player DataManager.
 	 */
 	public static class NamedLocations {
@@ -193,6 +203,11 @@ public class NamedLocation {
 		}	
 
 		
+		/**
+		 * Makes a map printable, basically this is a clumsy toString method.
+		 * @param map
+		 * @return
+		 */
 		static String mapToString(Map<String, String> map) {
 			StringBuffer sb = new StringBuffer("\n");
 			for (String k : map.keySet()) {
@@ -201,8 +216,12 @@ public class NamedLocation {
 			return sb.toString();
 		}
 
+		/**
+		 * Reads from our chosen serialization format.
+		 * @param map
+		 * @return
+		 */
 		static Map<String, NamedLocation> deserialize(Map<String, String> map) {
-			//System.out.println("Deserializing: " + map.get(KEY_NAMES) + "\t" + map.get(KEY_POS_X) + "\t" + map.get(KEY_POS_Y) + "\t" + map.get(KEY_POS_Z) + "\t" + map.get(KEY_DIMS));
 			List<String> names = splitToList(map.get(KEY_NAMES), SERIALIZATION_DELIMITER);
 			List<String> posX = splitToList(map.get(KEY_POS_X), SERIALIZATION_DELIMITER);
 			List<String> posY = splitToList(map.get(KEY_POS_Y), SERIALIZATION_DELIMITER);

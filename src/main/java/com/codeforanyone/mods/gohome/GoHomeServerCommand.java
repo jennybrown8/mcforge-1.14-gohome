@@ -32,7 +32,6 @@ import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.ServerWorld;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.TicketType;
-import net.minecraft.world.storage.WorldInfo;
 
 public class GoHomeServerCommand {
 
@@ -64,17 +63,26 @@ public class GoHomeServerCommand {
 		}
 	}
 
+	/**
+	 * Wrapper call
+	 * @param dispatcher
+	 */
 	public GoHomeServerCommand(CommandDispatcher<CommandSource> dispatcher) {
 		GoHomeServerCommand.register(dispatcher);
 	}
 
-	// The "then" portions are each command line argument in order.
-	// The different levels of then/executes handle missing arguments with sensible
-	// defaults. Note that it's .then(argument).then(argument.execute) layering
-	// here. A literal means string-exactly-equals. An argument is a variable
-	// placeholder.
+	/**
+	 * Registers "/go" as a command with various literal subcommands and a
+	 * fallback to parsing the argument as a location name for teleport.
+	 * @param dispatcher
+	 */
 	public static void register(CommandDispatcher<CommandSource> dispatcher) {
 		// @formatter:off
+		// The "then" portions are each command line argument in order.
+		// The different levels of then/executes handle missing arguments with sensible
+		// defaults. Note that it's .then(argument).then(argument.execute) layering
+		// here. A literal means string-exactly-equals. An argument is a variable
+		// placeholder.
 		dispatcher.register(Commands.literal("go")
 		.then(Commands.literal(CMD_LIST).executes(ctx -> {
 				return executeGoCommand(ctx.getSource(), ctx, CMD_LIST, null);
@@ -102,6 +110,12 @@ public class GoHomeServerCommand {
 		// @formatter:on
 	}
 
+	/**
+	 * Adds a player-specific named location (not global)
+	 * @param player
+	 * @param placename
+	 * @return
+	 */
 	public static RunResult add(ServerPlayerEntity player, String placename) {
 		if (placename == null) {
 			return new RunResult(RunResult.FAILURE, "Error: A location name must be provided for add.");
@@ -131,6 +145,12 @@ public class GoHomeServerCommand {
 
 	}
 
+	/**
+	 * Deletes a player-specific named location (not global)
+	 * @param player
+	 * @param placename
+	 * @return
+	 */
 	public static RunResult delete(ServerPlayerEntity player, String placename) {
 		if (placename == null) {
 			return new RunResult(RunResult.FAILURE, "Error: A location name must be provided for rm.");
@@ -160,6 +180,11 @@ public class GoHomeServerCommand {
 
 	}
 
+	/**
+	 * Deletes all player-specific named locations for one player, starting fresh (not global)
+	 * @param player
+	 * @return
+	 */
 	public static RunResult resetAll(ServerPlayerEntity player) {
 		// Starting fresh due to need for overwriting bad data.
 		Map<String, NamedLocation> locationsMap = new HashMap<String, NamedLocation>();
@@ -168,6 +193,11 @@ public class GoHomeServerCommand {
 				"Deleted all your location names and started fresh. Hopefully that solves your problem!");
 	}
 
+	/**
+	 * Deletes all global named locations, starting fresh.
+	 * @param commandSource
+	 * @return
+	 */
 	public static RunResult resetAllGlobal(CommandSource commandSource) {
 		if (!commandSource.hasPermissionLevel(OPERATOR_PERMISSION)) {
 			return new RunResult(RunResult.FAILURE,
@@ -179,6 +209,13 @@ public class GoHomeServerCommand {
 				"Deleted all global location names and started fresh. Hopefully that solves your problem!");
 	}
 
+	/**
+	 * Adds a global named location usable by all players
+	 * @param commandSource
+	 * @param player
+	 * @param placename
+	 * @return
+	 */
 	public static RunResult addGlobal(CommandSource commandSource, ServerPlayerEntity player, String placename) {
 		if (!commandSource.hasPermissionLevel(OPERATOR_PERMISSION)) {
 			return new RunResult(RunResult.FAILURE,
@@ -203,6 +240,13 @@ public class GoHomeServerCommand {
 		}
 	}
 
+	/**
+	 * Deletes a global named location from the list 
+	 * @param commandSource
+	 * @param player
+	 * @param placename
+	 * @return
+	 */
 	public static RunResult deleteGlobal(CommandSource commandSource, ServerPlayerEntity player, String placename) {
 		if (!commandSource.hasPermissionLevel(OPERATOR_PERMISSION)) {
 			return new RunResult(RunResult.FAILURE,
@@ -227,7 +271,13 @@ public class GoHomeServerCommand {
 		}
 	}
 
-	public static RunResult list(ServerPlayerEntity player, WorldInfo wi) {
+	/**
+	 * Lists global and player-specific named locations (global + the player who ran the command)
+	 * @param player
+	 * @param wi
+	 * @return
+	 */
+	public static RunResult list(ServerPlayerEntity player) {
 		Map<String, NamedLocation> playerLocations = NamedLocations.read(player.getEntityData());
 
 		SortedSet<String> globalLocationNames = GoHomeGlobalData.getInstance().listGlobalLocations();
@@ -248,6 +298,17 @@ public class GoHomeServerCommand {
 		return new RunResult(RunResult.SUCCESS, sb.toString());
 	}
 
+	/**
+	 * Command execution; this parallels the structure of the command nodes we used up in register() above.
+	 * Basically it determines the subcommand name, and runs that subcommand, or if the name
+	 * isn't recognized as a subcommand, then it tries to find it in the list of saved
+	 * location names and teleport there instead.  
+	 * @param commandSource
+	 * @param ctx
+	 * @param sub
+	 * @param placename
+	 * @return
+	 */
 	public static int executeGoCommand(CommandSource commandSource, CommandContext<CommandSource> ctx, String sub,
 			String placename) {
 
@@ -262,11 +323,10 @@ public class GoHomeServerCommand {
 			e.printStackTrace();
 			return 0;
 		}
-		WorldInfo wi = commandSource.getServer().getWorld(GoHomeMod.overworld).getWorldInfo();
 
 		try {
 			if (CMD_LIST.equalsIgnoreCase(sub)) {
-				RunResult exitcodeGlobal = list(player, wi);
+				RunResult exitcodeGlobal = list(player);
 				String globalNames = exitcodeGlobal.message;
 				commandSource.sendFeedback(new StringTextComponent(globalNames), ALLOW_LOGGING_TRUE);
 				return exitcodeGlobal.success ? 1 : 0;
@@ -401,6 +461,13 @@ public class GoHomeServerCommand {
 		return new RunResult(RunResult.SUCCESS, "Home sweet home!");
 	}
 
+	/**
+	 * Teleports to a named location, after checking that it's safe to do so.
+	 * @param commandSource
+	 * @param where
+	 * @return
+	 * @throws CommandSyntaxException
+	 */
 	private static RunResult teleportLocation(CommandSource commandSource, NamedLocation where) throws CommandSyntaxException {
 		ServerWorld destinationDimension = commandSource.getServer().getWorld(where.dimensionType);
 		if (isSafeLandingPlayerSized(destinationDimension, where) != null) {
@@ -414,8 +481,23 @@ public class GoHomeServerCommand {
 		return new RunResult(RunResult.SUCCESS, "Arrived at " + where.getName() + "!");
 	}
 
-	// I'd rather not copy-paste the contents of TeleportCommand, but its static
-	// method is private, meaning I can't call it, so I don't have a choice. Ugh.
+	/**
+	 * I'd rather not copy-paste the contents of TeleportCommand, but its static 
+	 * method is private, meaning I can't call it, so I don't have a choice. Ugh.
+	 * 
+	 * So this is an exact duplicate of the teleport method from the vanilla TeleportCommand class.
+	 * 
+	 * @param source
+	 * @param entityIn
+	 * @param worldIn
+	 * @param x
+	 * @param y
+	 * @param z
+	 * @param relativeList
+	 * @param yaw
+	 * @param pitch
+	 * @param facing
+	 */
 	private static void teleport(CommandSource source, Entity entityIn, ServerWorld worldIn, double x, double y,
 			double z, Set<SPlayerPositionLookPacket.Flags> relativeList, float yaw, float pitch,
 			@Nullable Facing facing) {
@@ -468,8 +550,9 @@ public class GoHomeServerCommand {
 
 	}
 
-	// I'd rather not copy-paste the contents of TeleportCommand, but its static
-	// method is private, meaning I can't call it, so I don't have a choice. Ugh.
+	/**
+	 * This is an exact duplicate of the Facing class from the vanilla TeleportCommand.
+	 */
 	static class Facing {
 		private final Vec3d position;
 		private final Entity entity;

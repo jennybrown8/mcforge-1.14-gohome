@@ -9,49 +9,54 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.codeforanyone.mods.gohome.NamedLocation.NamedLocations;
 
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.util.SharedConstants;
 
-public class GoHomeWorldSavedData {
-	public static GoHomeWorldSavedData INSTANCE = new GoHomeWorldSavedData();
+public class GoHomeGlobalData {
+	private static final Logger LOGGER = LogManager.getLogger();
+
+	private static final String GO_HOME_DATA_NBT_FILENAME = "GoHomeData.nbt";
+
+	public static GoHomeGlobalData INSTANCE = new GoHomeGlobalData();
 
 	Map<String, NamedLocation> globalNamedLocations = null;
 
-	public GoHomeWorldSavedData() {
+	public GoHomeGlobalData() {
 		globalNamedLocations = new HashMap<String, NamedLocation>();
 	}
 	
 	public void load() {
-		File fileIn = new File("GoHomeData.nbt");
+		File fileIn = new File(GO_HOME_DATA_NBT_FILENAME);
 		CompoundNBT compoundnbt = new CompoundNBT();
 
 		try (FileInputStream fileinputstream = new FileInputStream(fileIn)) {
 			compoundnbt = CompressedStreamTools.readCompressed(fileinputstream);
 			this.read(compoundnbt.getCompound("data"));
-			System.out.println("GoHome LOAD succeeded from " + fileIn.getAbsolutePath());
 		} catch (IOException ioexception) {
-			System.out.println("GoHome could not load data " + ioexception + " for file " + fileIn.getAbsolutePath());
+			LOGGER.error("GoHome could not load data " + ioexception + " for file " + fileIn.getAbsolutePath(), ioexception);
 		}
 	}
 
 	public void save() {
-		File fileIn = new File("GoHomeData.nbt");
+		File fileIn = new File(GO_HOME_DATA_NBT_FILENAME);
 		CompoundNBT compoundnbt = new CompoundNBT();
 		compoundnbt.put("data", this.write(new CompoundNBT()));
 		compoundnbt.putInt("DataVersion", SharedConstants.getVersion().getWorldVersion());
 
 		try (FileOutputStream fileoutputstream = new FileOutputStream(fileIn)) {
 			CompressedStreamTools.writeCompressed(compoundnbt, fileoutputstream);
-			System.out.println("GoHome SAVE succeeded writing to " + fileIn.getAbsolutePath());
 		} catch (IOException ioexception) {
-			System.out.println("GoHome could not save data " + ioexception + " for file " + fileIn.getAbsolutePath());
+			LOGGER.error("GoHome could not save data " + ioexception + " for file " + fileIn.getAbsolutePath(), ioexception);
 		}
 	}
 
-	public static GoHomeWorldSavedData getInstance() {
+	public static GoHomeGlobalData getInstance() {
 		return INSTANCE;
 	}
 

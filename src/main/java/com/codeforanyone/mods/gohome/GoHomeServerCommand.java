@@ -1,7 +1,11 @@
 package com.codeforanyone.mods.gohome;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -15,6 +19,11 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
+import net.minecraft.block.Block;
+import net.minecraft.block.CactusBlock;
+import net.minecraft.block.CampfireBlock;
+import net.minecraft.block.MagmaBlock;
+import net.minecraft.block.SweetBerryBushBlock;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.command.arguments.EntityAnchorArgument;
@@ -28,7 +37,9 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.ServerWorld;
+import net.minecraft.world.World;
 import net.minecraft.world.chunk.TicketType;
+import net.minecraft.world.dimension.DimensionType;
 
 public class GoHomeServerCommand {
 
@@ -41,7 +52,9 @@ public class GoHomeServerCommand {
 	private static final String CMD_RESET_PLAYER_LOCATIONS = "reset-all";
 	private static final String CMD_LIST = "list";
 	private static final String CMD_HOME = "home";
-	private static final String RESERVED_WORDS_ERROR_MESSAGE = "Error: A location name cannot be called " + CMD_HOME + " or " + CMD_LIST + ", as home is reserved for the world spawn location and list shows you the saved locations.";
+	private static final String RESERVED_WORDS_ERROR_MESSAGE = "Error: A location name cannot be called " + CMD_HOME
+			+ " or " + CMD_LIST
+			+ ", as home is reserved for the world spawn location and list shows you the saved locations.";
 	public static final int OPERATOR_PERMISSION = 2;
 	public static final boolean ALLOW_LOGGING_TRUE = true;
 
@@ -65,7 +78,8 @@ public class GoHomeServerCommand {
 	// The "then" portions are each command line argument in order.
 	// The different levels of then/executes handle missing arguments with sensible
 	// defaults. Note that it's .then(argument).then(argument.execute) layering
-	// here.
+	// here. A literal means string-exactly-equals. An argument is a variable
+	// placeholder.
 	public static void register(CommandDispatcher<CommandSource> dispatcher) {
 		// @formatter:off
 		dispatcher.register(Commands.literal("go")
@@ -99,13 +113,12 @@ public class GoHomeServerCommand {
 		if (placename == null) {
 			return new RunResult(RunResult.FAILURE, "Error: A location name must be provided for add.");
 		}
-		if (placename.contains(NamedLocations.SERIALIZATION_DELIMITER)) {
+		if (placename.indexOf(NamedLocations.SERIALIZATION_DELIMITER) > -1) {
 			return new RunResult(RunResult.FAILURE,
 					"Error: A location name cannot include the " + NamedLocations.SERIALIZATION_DELIMITER + " symbol.");
 		}
 		if (placename.equals(CMD_HOME) || placename.equals(CMD_LIST)) {
-			return new RunResult(RunResult.FAILURE,
-					RESERVED_WORDS_ERROR_MESSAGE);
+			return new RunResult(RunResult.FAILURE, RESERVED_WORDS_ERROR_MESSAGE);
 		}
 		// Get the storage and deserialize our entire collection of places, so we can
 		// modify it by adding or replacing one.
@@ -129,13 +142,12 @@ public class GoHomeServerCommand {
 		if (placename == null) {
 			return new RunResult(RunResult.FAILURE, "Error: A location name must be provided for rm.");
 		}
-		if (placename.contains(NamedLocations.SERIALIZATION_DELIMITER)) {
+		if (placename.indexOf(NamedLocations.SERIALIZATION_DELIMITER) > -1) {
 			return new RunResult(RunResult.FAILURE,
 					"Error: A location name cannot include the " + NamedLocations.SERIALIZATION_DELIMITER + " symbol.");
 		}
 		if (placename.equals(CMD_HOME) || placename.equals(CMD_LIST)) {
-			return new RunResult(RunResult.FAILURE,
-					RESERVED_WORDS_ERROR_MESSAGE);
+			return new RunResult(RunResult.FAILURE, RESERVED_WORDS_ERROR_MESSAGE);
 		}
 		// Get the storage and deserialize our entire collection of places, so we can
 		// modify it by adding or replacing one.
@@ -182,13 +194,12 @@ public class GoHomeServerCommand {
 		if (placename == null) {
 			return new RunResult(RunResult.FAILURE, "Error: A location name must be provided for add-global.");
 		}
-		if (placename.contains(NamedLocations.SERIALIZATION_DELIMITER)) {
+		if (placename.indexOf(NamedLocations.SERIALIZATION_DELIMITER) > -1) {
 			return new RunResult(RunResult.FAILURE,
 					"Error: A location name cannot include the " + NamedLocations.SERIALIZATION_DELIMITER + " symbol.");
 		}
 		if (placename.equals(CMD_HOME) || placename.equals(CMD_LIST)) {
-			return new RunResult(RunResult.FAILURE,
-					RESERVED_WORDS_ERROR_MESSAGE);
+			return new RunResult(RunResult.FAILURE, RESERVED_WORDS_ERROR_MESSAGE);
 		}
 		boolean willOverwrite = GoHomeWorldSavedData.INSTANCE.hasNamedLocation(placename);
 		GoHomeWorldSavedData.INSTANCE.addGlobalLocation(new NamedLocation(placename, player));
@@ -207,13 +218,12 @@ public class GoHomeServerCommand {
 		if (placename == null) {
 			return new RunResult(RunResult.FAILURE, "Error: A location name must be provided for add-global.");
 		}
-		if (placename.contains(NamedLocations.SERIALIZATION_DELIMITER)) {
+		if (placename.indexOf(NamedLocations.SERIALIZATION_DELIMITER) > -1) {
 			return new RunResult(RunResult.FAILURE,
 					"Error: A location name cannot include the " + NamedLocations.SERIALIZATION_DELIMITER + " symbol.");
 		}
 		if (placename.equals(CMD_HOME) || placename.equals(CMD_LIST)) {
-			return new RunResult(RunResult.FAILURE,
-					RESERVED_WORDS_ERROR_MESSAGE);
+			return new RunResult(RunResult.FAILURE, RESERVED_WORDS_ERROR_MESSAGE);
 		}
 
 		if (GoHomeWorldSavedData.INSTANCE.hasNamedLocation(placename)) {
@@ -305,10 +315,11 @@ public class GoHomeServerCommand {
 			}
 			// Check the player's named locations first, falling back on global.
 			Map<String, NamedLocation> playerLocations = NamedLocations.read(player.getEntityData());
-			NamedLocation destination = playerLocations.getOrDefault(sub, GoHomeWorldSavedData.INSTANCE.getNamedLocation(sub));
+			NamedLocation destination = playerLocations.getOrDefault(sub,
+					GoHomeWorldSavedData.INSTANCE.getNamedLocation(sub));
 			if (destination != null) {
 				// TODO: Safety check
-				RunResult exitcode = teleportLocation(commandSource, playerLocations.get(sub));
+				RunResult exitcode = teleportLocation(commandSource, destination);
 				commandSource.sendFeedback(new StringTextComponent(exitcode.message), ALLOW_LOGGING_TRUE);
 				return exitcode.success ? 1 : 0;
 			} else {
@@ -318,30 +329,94 @@ public class GoHomeServerCommand {
 			}
 		} catch (Throwable t) {
 			t.printStackTrace();
-			commandSource.sendFeedback(new StringTextComponent("Error with go command: " + t.toString()), ALLOW_LOGGING_TRUE);
+			commandSource.sendFeedback(new StringTextComponent("Error with go command: " + t.toString()),
+					ALLOW_LOGGING_TRUE);
 			return 0;
 		}
 	}
+	
+	/**
+	 * Returns a message about why the landing zone isn't safe, or null if it is
+	 * fine.  This only checks an area just barely big enough for the player.
+	 */
+	private static String isSafeLandingPlayerSized(World dimension, NamedLocation nl) {
+		double x = nl.getXpos();
+		double y = nl.getYpos();
+		double z = nl.getZpos();
+		
+		Set<String> damage_causing_blocks = new HashSet<String>();
+		damage_causing_blocks.addAll(Arrays.asList("block.minecraft.lava", "block.minecraft.magma_block", 
+				"block.minecraft.campfire", "block.minecraft.cactus", "block.minecraft.sweet_berry_bush"));
+		
+		StringBuffer sb = new StringBuffer("Can't teleport you because: \n");
+		boolean unsafe = false;
+		
+		// Check underfoot
+		BlockPos belowfeet = new BlockPos(x, y-1, z);
+		String block_belowfeet = dimension.getBlockState(belowfeet).getBlock().getTranslationKey();
+		String trans_belowfeet = dimension.getBlockState(belowfeet).getBlock().getNameTextComponent().getString();
+		if (!dimension.getBlockState(belowfeet).getMaterial().blocksMovement()) {
+			sb.append("You would fall - there's nothing solid underfoot at the landing area.\n");
+			unsafe = true;
+		}
+		if (damage_causing_blocks.contains(block_belowfeet)) {
+			sb.append("You would take damage from the block underfoot: " + trans_belowfeet);
+			unsafe = true;
+		}
+		
+		// Check at feet/knees
+		BlockPos atfeet = new BlockPos(x, y, z);
+		String block_atfeet = dimension.getBlockState(atfeet).getBlock().getTranslationKey();
+		String trans_atfeet = dimension.getBlockState(atfeet).getBlock().getNameTextComponent().getString();
+		if (dimension.getBlockState(atfeet).getMaterial().blocksMovement() || damage_causing_blocks.contains(block_atfeet)) {
+			sb.append("You would be stuck or take damage - there's a " + trans_atfeet + " block at leg height at the landing area.\n");
+			unsafe = true;
+		}
+		
+		// Check at head/face
+		BlockPos athead = new BlockPos(x, y+1, z);
+		String block_athead = dimension.getBlockState(athead).getBlock().getTranslationKey();
+		String trans_athead = dimension.getBlockState(athead).getBlock().getNameTextComponent().getString();
+		if (dimension.getBlockState(athead).getMaterial().blocksMovement() || dimension.getBlockState(athead).causesSuffocation(dimension, athead)) {
+			sb.append("You would be stuck or suffocate - there's a " + trans_athead + " block at head height at the landing area.\n");
+			unsafe = true;
+		}
+		if (damage_causing_blocks.contains(block_athead) ) {
+			sb.append("You would take damage from the block at head height: " + trans_athead);
+			unsafe = true;
+		}
+		if ("block.minecraft.water".contentEquals(dimension.getBlockState(athead).getBlock().getTranslationKey())) {
+			sb.append("You would have your head immersed in water and might not be able to breathe. Water is okay (recommended, even!) at leg height, but not over your face.");
+			unsafe = true;
+		}
+		return unsafe ? sb.toString() : null;
+	}
 
 	private static RunResult teleportHome(CommandSource commandSource) {
-		//commandSource.getEntity().changeDimension(GoHomeMod.overworld);
-		GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(),
-				(ServerWorld) commandSource.getWorld(),
-				commandSource.getWorld().getWorldInfo().getSpawnX() + 0.5,
-				commandSource.getWorld().getWorldInfo().getSpawnY(),
-				commandSource.getWorld().getWorldInfo().getSpawnZ() + 0.5,
-				EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class), commandSource.getEntity().getYaw(0),
+		double x = commandSource.getWorld().getWorldInfo().getSpawnX() + 0.5;
+		double y = commandSource.getWorld().getWorldInfo().getSpawnY();
+		double z = commandSource.getWorld().getWorldInfo().getSpawnZ() + 0.5;
+		NamedLocation where = new NamedLocation("home", x, y, z, GoHomeMod.overworld);
+		ServerWorld destinationDimension = commandSource.getServer().getWorld(where.dimensionType);
+
+		if (isSafeLandingPlayerSized(destinationDimension, where) != null) {
+			return new RunResult(RunResult.FAILURE, isSafeLandingPlayerSized(destinationDimension, where));
+		}
+
+		GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(), destinationDimension,
+				x, y, z, EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class), commandSource.getEntity().getYaw(0),
 				commandSource.getEntity().getPitch(0), new Facing(commandSource.getEntity().getLookVec()));
 		return new RunResult(RunResult.SUCCESS, "Home sweet home!");
 	}
 
-	private static RunResult teleportLocation(CommandSource commandSource, NamedLocation where) {
-		//commandSource.getEntity().changeDimension(where.getDimensionType());
-		GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(),
-				(ServerWorld) commandSource.getWorld(),
-				where.getXpos(),
-				where.getYpos(),
-				where.getZpos(),
+	private static RunResult teleportLocation(CommandSource commandSource, NamedLocation where) throws CommandSyntaxException {
+		ServerWorld destinationDimension = commandSource.getServer().getWorld(where.dimensionType);
+		if (isSafeLandingPlayerSized(destinationDimension, where) != null) {
+			return new RunResult(RunResult.FAILURE, isSafeLandingPlayerSized(destinationDimension, where));
+		}
+		
+		GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(), destinationDimension,
+				where.getXpos(), where.getYpos(), where.getZpos(),
 				EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class), commandSource.getEntity().getYaw(0),
 				commandSource.getEntity().getPitch(0), new Facing(commandSource.getEntity().getLookVec()));
 		return new RunResult(RunResult.SUCCESS, "Arrived at " + where.getName() + "!");

@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
@@ -135,7 +136,7 @@ public class NamedLocation {
 	 */
 	public static class NamedLocations {
 		
-		public static final String SERIALIZATION_DELIMITER = "|";
+		public static final char SERIALIZATION_DELIMITER = '|';
 		private static final String KEY_DIMS = "dims";
 		private static final String KEY_POS_Z = "posZ";
 		private static final String KEY_POS_Y = "posY";
@@ -160,11 +161,11 @@ public class NamedLocation {
 
 			Map<String, String> stringRepresentation = new HashMap<String, String>();
 			if (! map.isEmpty()) {
-				stringRepresentation.put(KEY_NAMES, String.join(SERIALIZATION_DELIMITER, names));
-				stringRepresentation.put(KEY_POS_X, String.join(SERIALIZATION_DELIMITER, xs));
-				stringRepresentation.put(KEY_POS_Y, String.join(SERIALIZATION_DELIMITER, ys));
-				stringRepresentation.put(KEY_POS_Z, String.join(SERIALIZATION_DELIMITER, zs));
-				stringRepresentation.put(KEY_DIMS, String.join(SERIALIZATION_DELIMITER, dims));
+				stringRepresentation.put(KEY_NAMES, String.join("" + SERIALIZATION_DELIMITER, names));
+				stringRepresentation.put(KEY_POS_X, String.join("" + SERIALIZATION_DELIMITER, xs));
+				stringRepresentation.put(KEY_POS_Y, String.join("" + SERIALIZATION_DELIMITER, ys));
+				stringRepresentation.put(KEY_POS_Z, String.join("" + SERIALIZATION_DELIMITER, zs));
+				stringRepresentation.put(KEY_DIMS, String.join("" + SERIALIZATION_DELIMITER, dims));
 			}
 			return stringRepresentation;
 		}
@@ -176,16 +177,22 @@ public class NamedLocation {
 		 * @param text
 		 * @return
 		 */
-		static List<String> splitToList(String text, String delimiter) {
-			if (text != null && text.contains(delimiter)) {
-				return Arrays.asList(text.split(delimiter));
+		static List<String> splitToList(String text, char delimiter) {
+			if (text != null && text.indexOf(delimiter) > -1) {
+				StringTokenizer st = new StringTokenizer(text, ""+ delimiter);
+				List<String> parts = new ArrayList<String>();
+				while(st.hasMoreTokens()) {
+					parts.add(st.nextToken());
+				}
+				return parts;
 			}
 			List<String> l = new ArrayList<String>();
 			if (text != null && !"".equals(text.trim())) {
 				l.add(text.trim());
 			}
 			return l;
-		}
+		}	
+
 		
 		static String mapToString(Map<String, String> map) {
 			StringBuffer sb = new StringBuffer("\n");
@@ -196,6 +203,7 @@ public class NamedLocation {
 		}
 
 		static Map<String, NamedLocation> deserialize(Map<String, String> map) {
+			System.out.println("Deserializing: " + map.get(KEY_NAMES) + "\t" + map.get(KEY_POS_X) + "\t" + map.get(KEY_POS_Y) + "\t" + map.get(KEY_POS_Z) + "\t" + map.get(KEY_DIMS));
 			List<String> names = splitToList(map.get(KEY_NAMES), SERIALIZATION_DELIMITER);
 			List<String> posX = splitToList(map.get(KEY_POS_X), SERIALIZATION_DELIMITER);
 			List<String> posY = splitToList(map.get(KEY_POS_Y), SERIALIZATION_DELIMITER);

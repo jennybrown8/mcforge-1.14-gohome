@@ -2,7 +2,6 @@ package com.codeforanyone.mods.gohome;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -203,7 +202,7 @@ public class NamedLocation {
 		}
 
 		static Map<String, NamedLocation> deserialize(Map<String, String> map) {
-			System.out.println("Deserializing: " + map.get(KEY_NAMES) + "\t" + map.get(KEY_POS_X) + "\t" + map.get(KEY_POS_Y) + "\t" + map.get(KEY_POS_Z) + "\t" + map.get(KEY_DIMS));
+			//System.out.println("Deserializing: " + map.get(KEY_NAMES) + "\t" + map.get(KEY_POS_X) + "\t" + map.get(KEY_POS_Y) + "\t" + map.get(KEY_POS_Z) + "\t" + map.get(KEY_DIMS));
 			List<String> names = splitToList(map.get(KEY_NAMES), SERIALIZATION_DELIMITER);
 			List<String> posX = splitToList(map.get(KEY_POS_X), SERIALIZATION_DELIMITER);
 			List<String> posY = splitToList(map.get(KEY_POS_Y), SERIALIZATION_DELIMITER);
@@ -230,10 +229,14 @@ public class NamedLocation {
 		 */
 		public static Map<String, NamedLocation> read(CompoundNBT nbt) {
 			Map<String, String> locs = new HashMap<String, String>();
-			for (String key : NBT_KEYS) {
-				locs.put(key, nbt.getString(key));
+			if (nbt.contains(NBT_KEYS.get(0))) {
+				for (String key : NBT_KEYS) {
+					locs.put(key, nbt.getString(key));
+				}
+				return NamedLocations.deserialize(locs);
+			} else {
+				return new HashMap<String, NamedLocation>();
 			}
-			return NamedLocations.deserialize(locs);
 		}
 		
 		/**

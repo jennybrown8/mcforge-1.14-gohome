@@ -1,11 +1,9 @@
 package com.codeforanyone.mods.gohome;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -19,11 +17,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.CactusBlock;
-import net.minecraft.block.CampfireBlock;
-import net.minecraft.block.MagmaBlock;
-import net.minecraft.block.SweetBerryBushBlock;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.command.arguments.EntityAnchorArgument;
@@ -39,7 +32,7 @@ import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.ServerWorld;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.TicketType;
-import net.minecraft.world.dimension.DimensionType;
+import net.minecraft.world.storage.WorldInfo;
 
 public class GoHomeServerCommand {
 
@@ -181,7 +174,7 @@ public class GoHomeServerCommand {
 					"Error: You must be a server operator to change global named locations.");
 		}
 		// Starting fresh due to need for overwriting bad data.
-		GoHomeWorldSavedData.INSTANCE.resetAllGlobal();
+		GoHomeWorldSavedData.getInstance().resetAllGlobal();
 		return new RunResult(RunResult.SUCCESS,
 				"Deleted all global location names and started fresh. Hopefully that solves your problem!");
 	}
@@ -201,8 +194,8 @@ public class GoHomeServerCommand {
 		if (placename.equals(CMD_HOME) || placename.equals(CMD_LIST)) {
 			return new RunResult(RunResult.FAILURE, RESERVED_WORDS_ERROR_MESSAGE);
 		}
-		boolean willOverwrite = GoHomeWorldSavedData.INSTANCE.hasNamedLocation(placename);
-		GoHomeWorldSavedData.INSTANCE.addGlobalLocation(new NamedLocation(placename, player));
+		boolean willOverwrite = GoHomeWorldSavedData.getInstance().hasNamedLocation(placename);
+		GoHomeWorldSavedData.getInstance().addGlobalLocation(new NamedLocation(placename, player));
 		if (willOverwrite) {
 			return new RunResult(RunResult.SUCCESS, "Replaced global location " + placename);
 		} else {
@@ -226,18 +219,18 @@ public class GoHomeServerCommand {
 			return new RunResult(RunResult.FAILURE, RESERVED_WORDS_ERROR_MESSAGE);
 		}
 
-		if (GoHomeWorldSavedData.INSTANCE.hasNamedLocation(placename)) {
-			GoHomeWorldSavedData.INSTANCE.removeGlobalLocation(placename);
+		if (GoHomeWorldSavedData.getInstance().hasNamedLocation(placename)) {
+			GoHomeWorldSavedData.getInstance().removeGlobalLocation(placename);
 			return new RunResult(RunResult.SUCCESS, "Removed " + placename + " from the global locations.");
 		} else {
 			return new RunResult(RunResult.FAILURE, "No global lcoation " + placename + " exists.  Did you typo?");
 		}
 	}
 
-	public static RunResult list(ServerPlayerEntity player) {
+	public static RunResult list(ServerPlayerEntity player, WorldInfo wi) {
 		Map<String, NamedLocation> playerLocations = NamedLocations.read(player.getEntityData());
 
-		SortedSet<String> globalLocationNames = GoHomeWorldSavedData.INSTANCE.listGlobalLocations();
+		SortedSet<String> globalLocationNames = GoHomeWorldSavedData.getInstance().listGlobalLocations();
 		globalLocationNames.add(CMD_HOME);
 
 		SortedSet<String> playerLocationNames = new TreeSet<String>();
@@ -269,10 +262,11 @@ public class GoHomeServerCommand {
 			e.printStackTrace();
 			return 0;
 		}
-		try {
+		WorldInfo wi = commandSource.getServer().getWorld(GoHomeMod.overworld).getWorldInfo();
 
+		try {
 			if (CMD_LIST.equalsIgnoreCase(sub)) {
-				RunResult exitcodeGlobal = list(player);
+				RunResult exitcodeGlobal = list(player, wi);
 				String globalNames = exitcodeGlobal.message;
 				commandSource.sendFeedback(new StringTextComponent(globalNames), ALLOW_LOGGING_TRUE);
 				return exitcodeGlobal.success ? 1 : 0;
@@ -315,10 +309,8 @@ public class GoHomeServerCommand {
 			}
 			// Check the player's named locations first, falling back on global.
 			Map<String, NamedLocation> playerLocations = NamedLocations.read(player.getEntityData());
-			NamedLocation destination = playerLocations.getOrDefault(sub,
-					GoHomeWorldSavedData.INSTANCE.getNamedLocation(sub));
+			NamedLocation destination = playerLocations.getOrDefault(sub, GoHomeWorldSavedData.getInstance().getNamedLocation(sub));
 			if (destination != null) {
-				// TODO: Safety check
 				RunResult exitcode = teleportLocation(commandSource, destination);
 				commandSource.sendFeedback(new StringTextComponent(exitcode.message), ALLOW_LOGGING_TRUE);
 				return exitcode.success ? 1 : 0;

@@ -1,18 +1,12 @@
 package com.codeforanyone.mods.gohome;
 
-import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import net.minecraft.block.Block;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.world.ServerWorld;
-import net.minecraft.world.World;
 import net.minecraft.world.dimension.DimensionType;
-import net.minecraft.world.storage.DimensionSavedDataManager;
-import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -22,6 +16,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
+import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
 // The value here should match an entry in the META-INF/mods.toml file
@@ -81,12 +76,12 @@ public class GoHomeMod {
 	public void onServerStarting(FMLServerStartingEvent startingEvent) {
 		// register our server command
 		new GoHomeServerCommand(startingEvent.getCommandDispatcher());
+		GoHomeWorldSavedData.INSTANCE.load();
+	}
 
-		// We need to tell the data manager about our custom mod data
-		ServerWorld world = startingEvent.getServer().getWorlds().iterator().next();
-		DimensionSavedDataManager dm = world.getSavedData();
-		dm.set(GoHomeWorldSavedData.INSTANCE);
-
+	@SubscribeEvent
+	public void onServerStopping(FMLServerStoppingEvent stoppingEvent) {
+		GoHomeWorldSavedData.INSTANCE.save();
 	}
 
 	// You can use EventBusSubscriber to automatically subscribe events on the

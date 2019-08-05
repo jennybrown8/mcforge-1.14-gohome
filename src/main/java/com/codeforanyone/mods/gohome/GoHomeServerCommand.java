@@ -11,6 +11,9 @@ import java.util.TreeSet;
 
 import javax.annotation.Nullable;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.codeforanyone.mods.gohome.NamedLocation.NamedLocations;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -34,6 +37,8 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.TicketType;
 
 public class GoHomeServerCommand {
+
+	private static final Logger LOGGER = LogManager.getLogger();
 
 	private static final String ARGUMENT_KEY_PLACENAME = "placename";
 	private static final String CMD_DELETE_PLAYER_LOCATION = "delete";
@@ -65,6 +70,7 @@ public class GoHomeServerCommand {
 
 	/**
 	 * Wrapper call
+	 * 
 	 * @param dispatcher
 	 */
 	public GoHomeServerCommand(CommandDispatcher<CommandSource> dispatcher) {
@@ -72,8 +78,9 @@ public class GoHomeServerCommand {
 	}
 
 	/**
-	 * Registers "/go" as a command with various literal subcommands and a
-	 * fallback to parsing the argument as a location name for teleport.
+	 * Registers "/go" as a command with various literal subcommands and a fallback
+	 * to parsing the argument as a location name for teleport.
+	 * 
 	 * @param dispatcher
 	 */
 	public static void register(CommandDispatcher<CommandSource> dispatcher) {
@@ -112,6 +119,7 @@ public class GoHomeServerCommand {
 
 	/**
 	 * Adds a player-specific named location (not global)
+	 * 
 	 * @param player
 	 * @param placename
 	 * @return
@@ -147,6 +155,7 @@ public class GoHomeServerCommand {
 
 	/**
 	 * Deletes a player-specific named location (not global)
+	 * 
 	 * @param player
 	 * @param placename
 	 * @return
@@ -181,7 +190,9 @@ public class GoHomeServerCommand {
 	}
 
 	/**
-	 * Deletes all player-specific named locations for one player, starting fresh (not global)
+	 * Deletes all player-specific named locations for one player, starting fresh
+	 * (not global)
+	 * 
 	 * @param player
 	 * @return
 	 */
@@ -195,6 +206,7 @@ public class GoHomeServerCommand {
 
 	/**
 	 * Deletes all global named locations, starting fresh.
+	 * 
 	 * @param commandSource
 	 * @return
 	 */
@@ -211,6 +223,7 @@ public class GoHomeServerCommand {
 
 	/**
 	 * Adds a global named location usable by all players
+	 * 
 	 * @param commandSource
 	 * @param player
 	 * @param placename
@@ -241,7 +254,8 @@ public class GoHomeServerCommand {
 	}
 
 	/**
-	 * Deletes a global named location from the list 
+	 * Deletes a global named location from the list
+	 * 
 	 * @param commandSource
 	 * @param player
 	 * @param placename
@@ -272,7 +286,9 @@ public class GoHomeServerCommand {
 	}
 
 	/**
-	 * Lists global and player-specific named locations (global + the player who ran the command)
+	 * Lists global and player-specific named locations (global + the player who ran
+	 * the command)
+	 * 
 	 * @param player
 	 * @param wi
 	 * @return
@@ -299,10 +315,12 @@ public class GoHomeServerCommand {
 	}
 
 	/**
-	 * Command execution; this parallels the structure of the command nodes we used up in register() above.
-	 * Basically it determines the subcommand name, and runs that subcommand, or if the name
-	 * isn't recognized as a subcommand, then it tries to find it in the list of saved
-	 * location names and teleport there instead.  
+	 * Command execution; this parallels the structure of the command nodes we used
+	 * up in register() above. Basically it determines the subcommand name, and runs
+	 * that subcommand, or if the name isn't recognized as a subcommand, then it
+	 * tries to find it in the list of saved location names and teleport there
+	 * instead.
+	 * 
 	 * @param commandSource
 	 * @param ctx
 	 * @param sub
@@ -369,7 +387,8 @@ public class GoHomeServerCommand {
 			}
 			// Check the player's named locations first, falling back on global.
 			Map<String, NamedLocation> playerLocations = NamedLocations.read(player.getEntityData());
-			NamedLocation destination = playerLocations.getOrDefault(sub, GoHomeGlobalData.getInstance().getNamedLocation(sub));
+			NamedLocation destination = playerLocations.getOrDefault(sub,
+					GoHomeGlobalData.getInstance().getNamedLocation(sub));
 			if (destination != null) {
 				RunResult exitcode = teleportLocation(commandSource, destination);
 				commandSource.sendFeedback(new StringTextComponent(exitcode.message), ALLOW_LOGGING_TRUE);
@@ -386,25 +405,25 @@ public class GoHomeServerCommand {
 			return 0;
 		}
 	}
-	
+
 	/**
 	 * Returns a message about why the landing zone isn't safe, or null if it is
-	 * fine.  This only checks an area just barely big enough for the player.
+	 * fine. This only checks an area just barely big enough for the player.
 	 */
 	private static String isSafeLandingPlayerSized(World dimension, NamedLocation nl) {
 		double x = nl.getXpos();
 		double y = nl.getYpos();
 		double z = nl.getZpos();
-		
+
 		Set<String> damage_causing_blocks = new HashSet<String>();
-		damage_causing_blocks.addAll(Arrays.asList("block.minecraft.lava", "block.minecraft.magma_block", 
+		damage_causing_blocks.addAll(Arrays.asList("block.minecraft.lava", "block.minecraft.magma_block",
 				"block.minecraft.campfire", "block.minecraft.cactus", "block.minecraft.sweet_berry_bush"));
-		
+
 		StringBuffer sb = new StringBuffer("Can't teleport you because: \n");
 		boolean unsafe = false;
-		
+
 		// Check underfoot
-		BlockPos belowfeet = new BlockPos(x, y-1, z);
+		BlockPos belowfeet = new BlockPos(x, y - 1, z);
 		String block_belowfeet = dimension.getBlockState(belowfeet).getBlock().getTranslationKey();
 		String trans_belowfeet = dimension.getBlockState(belowfeet).getBlock().getNameTextComponent().getString();
 		if (!dimension.getBlockState(belowfeet).getMaterial().blocksMovement()) {
@@ -415,30 +434,35 @@ public class GoHomeServerCommand {
 			sb.append("You would take damage from the block underfoot: " + trans_belowfeet);
 			unsafe = true;
 		}
-		
+
 		// Check at feet/knees
 		BlockPos atfeet = new BlockPos(x, y, z);
 		String block_atfeet = dimension.getBlockState(atfeet).getBlock().getTranslationKey();
 		String trans_atfeet = dimension.getBlockState(atfeet).getBlock().getNameTextComponent().getString();
-		if (dimension.getBlockState(atfeet).getMaterial().blocksMovement() || damage_causing_blocks.contains(block_atfeet)) {
-			sb.append("You would be stuck or take damage - there's a " + trans_atfeet + " block at leg height at the landing area.\n");
+		if (dimension.getBlockState(atfeet).getMaterial().blocksMovement()
+				|| damage_causing_blocks.contains(block_atfeet)) {
+			sb.append("You would be stuck or take damage - there's a " + trans_atfeet
+					+ " block at leg height at the landing area.\n");
 			unsafe = true;
 		}
-		
+
 		// Check at head/face
-		BlockPos athead = new BlockPos(x, y+1, z);
+		BlockPos athead = new BlockPos(x, y + 1, z);
 		String block_athead = dimension.getBlockState(athead).getBlock().getTranslationKey();
 		String trans_athead = dimension.getBlockState(athead).getBlock().getNameTextComponent().getString();
-		if (dimension.getBlockState(athead).getMaterial().blocksMovement() || dimension.getBlockState(athead).causesSuffocation(dimension, athead)) {
-			sb.append("You would be stuck or suffocate - there's a " + trans_athead + " block at head height at the landing area.\n");
+		if (dimension.getBlockState(athead).getMaterial().blocksMovement()
+				|| dimension.getBlockState(athead).causesSuffocation(dimension, athead)) {
+			sb.append("You would be stuck or suffocate - there's a " + trans_athead
+					+ " block at head height at the landing area.\n");
 			unsafe = true;
 		}
-		if (damage_causing_blocks.contains(block_athead) ) {
+		if (damage_causing_blocks.contains(block_athead)) {
 			sb.append("You would take damage from the block at head height: " + trans_athead);
 			unsafe = true;
 		}
 		if ("block.minecraft.water".contentEquals(dimension.getBlockState(athead).getBlock().getTranslationKey())) {
-			sb.append("You would have your head immersed in water and might not be able to breathe. Water is okay (recommended, even!) at leg height, but not over your face.");
+			sb.append(
+					"You would have your head immersed in water and might not be able to breathe. Water is okay (recommended, even!) at leg height, but not over your face.");
 			unsafe = true;
 		}
 		return unsafe ? sb.toString() : null;
@@ -455,37 +479,41 @@ public class GoHomeServerCommand {
 			return new RunResult(RunResult.FAILURE, isSafeLandingPlayerSized(destinationDimension, where));
 		}
 
-		GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(), destinationDimension,
-				x, y, z, EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class), commandSource.getEntity().getYaw(0),
+		GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(), destinationDimension, x, y, z,
+				EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class), commandSource.getEntity().getYaw(0),
 				commandSource.getEntity().getPitch(0), new Facing(commandSource.getEntity().getLookVec()));
 		return new RunResult(RunResult.SUCCESS, "Home sweet home!");
 	}
 
 	/**
 	 * Teleports to a named location, after checking that it's safe to do so.
+	 * 
 	 * @param commandSource
 	 * @param where
 	 * @return
 	 * @throws CommandSyntaxException
 	 */
-	private static RunResult teleportLocation(CommandSource commandSource, NamedLocation where) throws CommandSyntaxException {
+	private static RunResult teleportLocation(CommandSource commandSource, NamedLocation where)
+			throws CommandSyntaxException {
 		ServerWorld destinationDimension = commandSource.getServer().getWorld(where.dimensionType);
 		if (isSafeLandingPlayerSized(destinationDimension, where) != null) {
 			return new RunResult(RunResult.FAILURE, isSafeLandingPlayerSized(destinationDimension, where));
 		}
-		
-		GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(), destinationDimension,
-				where.getXpos(), where.getYpos(), where.getZpos(),
-				EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class), commandSource.getEntity().getYaw(0),
-				commandSource.getEntity().getPitch(0), new Facing(commandSource.getEntity().getLookVec()));
+
+		GoHomeServerCommand.teleport(commandSource, commandSource.getEntity(), destinationDimension, where.getXpos(),
+				where.getYpos(), where.getZpos(), EnumSet.noneOf(SPlayerPositionLookPacket.Flags.class),
+				commandSource.getEntity().getYaw(0), commandSource.getEntity().getPitch(0),
+				new Facing(commandSource.getEntity().getLookVec()));
 		return new RunResult(RunResult.SUCCESS, "Arrived at " + where.getName() + "!");
 	}
 
 	/**
-	 * I'd rather not copy-paste the contents of TeleportCommand, but its static 
+	 * I'd rather not copy-paste the contents of TeleportCommand, but its static
 	 * method is private, meaning I can't call it, so I don't have a choice. Ugh.
 	 * 
-	 * So this is an exact duplicate of the teleport method from the vanilla TeleportCommand class.
+	 * So this is an exact duplicate of the teleport method from the vanilla
+	 * TeleportCommand class, with a single tweak to announce your horse's position
+	 * if you teleport away.
 	 * 
 	 * @param source
 	 * @param entityIn
@@ -502,6 +530,22 @@ public class GoHomeServerCommand {
 			double z, Set<SPlayerPositionLookPacket.Flags> relativeList, float yaw, float pitch,
 			@Nullable Facing facing) {
 		if (entityIn instanceof ServerPlayerEntity) {
+			// --- Modification for GoHome ----
+			ServerPlayerEntity player = (ServerPlayerEntity) entityIn;
+			if (player.getRidingEntity() != null) {
+				String mount = player.getRidingEntity().getName().getString();
+				String dimname = "Overworld";
+				if (player.getEntityWorld().getDimension().getType() == GoHomeMod.nether) {
+					dimname = "Nether";
+				} else if (player.getEntityWorld().getDimension().getType() == GoHomeMod.end) {
+					dimname = "End";
+				}
+				String message = "The " + mount + " you were riding was left at your previous position "
+						+ player.getPosition().getX() + "," + player.getPosition().getY() + ","
+						+ player.getPosition().getZ() + " in the " + dimname + " when you teleported.";
+				player.sendMessage(new StringTextComponent(message));
+			}
+			// -------- End of GoHome ---------
 			ChunkPos chunkpos = new ChunkPos(new BlockPos(x, y, z));
 			worldIn.getChunkProvider().func_217228_a(TicketType.POST_TELEPORT, chunkpos, 1, entityIn.getEntityId());
 			entityIn.stopRiding();
@@ -510,20 +554,26 @@ public class GoHomeServerCommand {
 			}
 
 			if (worldIn == entityIn.world) {
+				LOGGER.debug("World branch 1");
 				((ServerPlayerEntity) entityIn).connection.setPlayerLocation(x, y, z, yaw, pitch, relativeList);
 			} else {
+				LOGGER.debug("World branch 2");
 				((ServerPlayerEntity) entityIn).teleport(worldIn, x, y, z, yaw, pitch);
 			}
 
 			entityIn.setRotationYawHead(yaw);
+			LOGGER.debug("World branch 3");
 		} else {
+			LOGGER.debug("World branch 4");
 			float f1 = MathHelper.wrapDegrees(yaw);
 			float f = MathHelper.wrapDegrees(pitch);
 			f = MathHelper.clamp(f, -90.0F, 90.0F);
 			if (worldIn == entityIn.world) {
+				LOGGER.debug("World branch 5");
 				entityIn.setLocationAndAngles(x, y, z, f1, f);
 				entityIn.setRotationYawHead(f1);
 			} else {
+				LOGGER.debug("World branch 6");
 				entityIn.detach();
 				entityIn.dimension = worldIn.dimension.getType();
 				Entity entity = entityIn;
@@ -532,6 +582,7 @@ public class GoHomeServerCommand {
 					return;
 				}
 
+				LOGGER.debug("World branch 7");
 				entityIn.copyDataFromOld(entity);
 				entityIn.setLocationAndAngles(x, y, z, f1, f);
 				entityIn.setRotationYawHead(f1);
@@ -547,11 +598,13 @@ public class GoHomeServerCommand {
 			entityIn.setMotion(entityIn.getMotion().mul(1.0D, 0.0D, 1.0D));
 			entityIn.onGround = true;
 		}
+		LOGGER.debug("World branch 8");
 
 	}
 
 	/**
-	 * This is an exact duplicate of the Facing class from the vanilla TeleportCommand.
+	 * This is an exact duplicate of the Facing class from the vanilla
+	 * TeleportCommand.
 	 */
 	static class Facing {
 		private final Vec3d position;

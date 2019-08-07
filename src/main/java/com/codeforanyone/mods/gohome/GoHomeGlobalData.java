@@ -39,6 +39,9 @@ public class GoHomeGlobalData {
 	public void load() {
 		File fileIn = new File(GO_HOME_DATA_NBT_FILENAME);
 		CompoundNBT compoundnbt = new CompoundNBT();
+		if (!fileIn.exists()) {
+			save(); // create our file, empty to start with.
+		}
 
 		try (FileInputStream fileinputstream = new FileInputStream(fileIn)) {
 			compoundnbt = CompressedStreamTools.readCompressed(fileinputstream);

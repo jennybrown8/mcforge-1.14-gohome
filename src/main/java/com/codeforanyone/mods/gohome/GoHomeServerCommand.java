@@ -425,47 +425,45 @@ public class GoHomeServerCommand {
 		// Check underfoot
 		BlockPos belowfeet = new BlockPos(x, y - 1, z);
 		String block_belowfeet = dimension.getBlockState(belowfeet).getBlock().getTranslationKey();
-		String trans_belowfeet = dimension.getBlockState(belowfeet).getBlock().getNameTextComponent().getString();
 		if (!dimension.getBlockState(belowfeet).getMaterial().blocksMovement()) {
-			sb.append("You would fall - there's nothing solid underfoot at the landing area.\n");
+			sb.append("You would fall - there's nothing solid underfoot at the landing area " + position(belowfeet) + "\n");
 			unsafe = true;
 		}
 		if (damage_causing_blocks.contains(block_belowfeet)) {
-			sb.append("You would take damage from the block underfoot: " + trans_belowfeet);
+			sb.append("You would take damage from the block underfoot: " + position(belowfeet) + ".\n");
 			unsafe = true;
 		}
 
 		// Check at feet/knees
 		BlockPos atfeet = new BlockPos(x, y, z);
 		String block_atfeet = dimension.getBlockState(atfeet).getBlock().getTranslationKey();
-		String trans_atfeet = dimension.getBlockState(atfeet).getBlock().getNameTextComponent().getString();
 		if (dimension.getBlockState(atfeet).getMaterial().blocksMovement()
 				|| damage_causing_blocks.contains(block_atfeet)) {
-			sb.append("You would be stuck or take damage - there's a " + trans_atfeet
-					+ " block at leg height at the landing area.\n");
+			sb.append("You would be stuck or take damage - there's a block at leg height at the landing area " + position(atfeet) + ".\n");
 			unsafe = true;
 		}
 
 		// Check at head/face
 		BlockPos athead = new BlockPos(x, y + 1, z);
 		String block_athead = dimension.getBlockState(athead).getBlock().getTranslationKey();
-		String trans_athead = dimension.getBlockState(athead).getBlock().getNameTextComponent().getString();
 		if (dimension.getBlockState(athead).getMaterial().blocksMovement()
 				|| dimension.getBlockState(athead).causesSuffocation(dimension, athead)) {
-			sb.append("You would be stuck or suffocate - there's a " + trans_athead
-					+ " block at head height at the landing area.\n");
+			sb.append("You would be stuck or suffocate - there's a block at head height at the landing area " +  position(atfeet) + ".\n");
 			unsafe = true;
 		}
 		if (damage_causing_blocks.contains(block_athead)) {
-			sb.append("You would take damage from the block at head height: " + trans_athead);
+			sb.append("You would take damage from the block at head height at " + position(athead) + ".\n");
 			unsafe = true;
 		}
 		if ("block.minecraft.water".contentEquals(dimension.getBlockState(athead).getBlock().getTranslationKey())) {
-			sb.append(
-					"You would have your head immersed in water and might not be able to breathe. Water is okay (recommended, even!) at leg height, but not over your face.");
+			sb.append("You couldn't breathe with water over your face at " + position(athead) + " (although it would be fine at your knees!).\n");
 			unsafe = true;
 		}
 		return unsafe ? sb.toString() : null;
+	}
+	
+	private static String position(BlockPos pos) {
+		return "(" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ")";
 	}
 
 	private static RunResult teleportHome(CommandSource commandSource) {

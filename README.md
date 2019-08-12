@@ -121,9 +121,7 @@ any other-dimension location.
 
 ### Author Info
 
-<https://github.com/jennybrown8>
-
-jennybrown8 @ gmail.com
+pathmakerjen@gmail.com
 
 This is not a high priority project for me, so while bug reports are welcome, they might be a long time in the fixing.
 

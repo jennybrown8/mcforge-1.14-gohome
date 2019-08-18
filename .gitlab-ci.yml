@@ -19,6 +19,10 @@ build:
     paths:
       - build
       - .gradle
+  artifacts:
+    paths:
+      - build/libs/gohome-*.jar
+    expire_in: 1 week
 
 test:
   stage: test

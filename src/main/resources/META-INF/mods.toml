@@ -28,11 +28,7 @@ credits="Making Minecraft with littles simpler, by JennyBrown8" #optional
 # A text field displayed in the mod UI
 authors="JennyBrown8" #optional
 # The description text for the mod (multi line!) (#mandatory)
-# For some weird reason the first 3 lines are always cut off, so use dots to skip them.
-description='''.
-.
-.
-GoHome enables players to type '/go home' to be teleported instantly back to home base (world-spawn coordinates), which is especially helpful when adventuring as a family with young children.  Other named locations can also be created.  Rides will be dismounted and left behind, but their coordinates shared.'''
+description='''GoHome enables players to type '/go home' to be teleported instantly back to home base (world-spawn coordinates), which is especially helpful when adventuring as a family with young children.  Other named locations can also be created.  Rides will be dismounted and left behind, but their coordinates shared.'''
 # A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
 [[dependencies.gohome]] #optional
     # the modid of the dependency

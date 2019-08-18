@@ -18,9 +18,9 @@ public class GoHomeMod {
 	private static final Logger LOGGER = LogManager.getLogger();
 
 	// Named wrappers because the original ones are ugly from obfuscation.
-	public static final DimensionType overworld = DimensionType.field_223227_a_;
-	public static final DimensionType nether = DimensionType.field_223228_b_;
-	public static final DimensionType end = DimensionType.field_223229_c_;
+	public static final DimensionType overworld = DimensionType.OVERWORLD;
+	public static final DimensionType nether = DimensionType.NETHER;
+	public static final DimensionType end = DimensionType.THE_END;
 
 	public GoHomeMod() {
 		// Register the setup method for modloading

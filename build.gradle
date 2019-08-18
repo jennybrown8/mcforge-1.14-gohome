@@ -15,10 +15,10 @@ apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
 group = 'com.codeforanyone.mods' 
-archivesBaseName = 'gohome-for-mc1.14.3'
+archivesBaseName = 'gohome-for-mc1.14.2'
 version = '1.0'
 def MAPPING_VERSION_ID='20190621-1.14.2'
-def MINECRAFT_VERSION_ID='net.minecraftforge:forge:1.14.3-27.0.50'
+def MINECRAFT_VERSION_ID='net.minecraftforge:forge:1.14.2-26.0.63'
 
 sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
 
